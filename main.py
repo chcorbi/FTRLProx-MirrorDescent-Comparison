@@ -33,13 +33,11 @@ def main(datafile):
     return X, y
 
 
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', type=str, help="One input file")
     args = parser.parse_args()
-    
+   
     X, y = main(args.input_file)
 
     # FTRL Prox 
@@ -47,3 +45,4 @@ if __name__ == '__main__':
     w, y_proba = FTRL.train(X[:1000,:],y[:1000])
     print ("ROC Score: %f" %roc_auc_score(y[:1000], y_proba))
     print ("Non zero fraction of final weight: %f" %nnz_fraction(w))
+
