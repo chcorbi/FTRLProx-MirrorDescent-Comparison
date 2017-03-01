@@ -1,3 +1,7 @@
+import numpy as np
+from datetime import datetime
+from sklearn.base import BaseEstimator
+
 class FOBOS (BaseEstimator):
     '''
     FOBOS composite mirror descent
@@ -54,7 +58,7 @@ class FOBOS (BaseEstimator):
         
     '''
     def __init__(self, loss='least_squares', initial_step=.1, lamda1= 1e-3,
-                  lamda2=1e-3, regularization='l1', initialization='zeros', with_log=False,):
+                  lamda2=1e-3, regularization='l1', initialization='zeros', with_log=False):
 
         self.yflag = False
         self.t = 0 #number of learned points
@@ -65,6 +69,7 @@ class FOBOS (BaseEstimator):
         self.learning_rate = initial_step
         self.p = -1
         self.initialization = initialization
+        self.loss = loss
 
         self.soft_thresholding = np.vectorize(self.soft_thresholding_scalar)
         if loss == 'least_squares':
@@ -78,6 +83,7 @@ class FOBOS (BaseEstimator):
         if with_log:
             self.gradlog = []
             self.wlog = []
+            self.probas = []
     def reshape_x(self, x_t):
         x_t = np.concatenate([x_t,np.ones(1)])
         
@@ -110,6 +116,8 @@ class FOBOS (BaseEstimator):
             self.w = self.soft_thresholding(w_thalf, self.lamda1*self.learning_rate) / (1 + self.lamda2*self.learning_rate)
         if self.with_log:
             self.wlog.append(self.w)
+            if self.loss == 'logloss':
+                self.probas.append(self.predict_proba(x_t))
     
     def predict(self, x_t):
         x_t = self.reshape_x(x_t)
@@ -121,9 +129,10 @@ class FOBOS (BaseEstimator):
 
 
     def gradient_lse(self, x_t, y_t):
+        grd = x_t * (x_t.dot(self.w) - y_t)
         if self.with_log:
-            self.gradlog.append(np.linalg.norm(x_t * (x_t.dot(self.w) - y_t)))
-        return x_t * (x_t.dot(self.w) - y_t)
+            self.gradlog.append(np.linalg.norm(grd))
+        return grd
     
 
     def gradient_logreg(self, x_t, y_t):
@@ -132,12 +141,28 @@ class FOBOS (BaseEstimator):
             self.yflag = True
         exp = np.exp(y_t * x_t.dot(self.w))
         
-        return -y_t * x_t / (1+exp)
+        grd = -y_t * x_t / (1+exp)
+        
+        if self.with_log:
+            self.gradlog.append(np.linalg.norm(grd))
+        
+        return grd
 
 
     def predict_regression(self, x_t):
         return self.w.dot(x_t)
     
+    
+    def sigmoid(self, b):
+        return 1./ (1 + np.exp(-b))
+        
+    def predict_proba(self, x_t):
+        #only in case of classification:
+        if self.loss == 'logloss':
+            return self.sigmoid(x_t.dot(self.w))
+            
+        else:
+            return None
     def predict_classif(self, x_t):
         y = np.sign(predict_regression(x_t))
         if self.yflag and (y + 1) < 1e-10:
