@@ -3,21 +3,18 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
-from scipy import stats
 from sklearn.datasets import load_svmlight_file
-from sklearn.metrics import log_loss
 from sklearn.metrics import roc_auc_score
-from sklearn.utils import shuffle
 
 from utils import nnz_fraction
-from base import OnlineClassifier
-from solvers import *
+from solvers import RDASolver
 from FTRLProx import FollowTheRegularizedLeaderProximal
 
 
 def loading_dataset(filename):
     data = load_svmlight_file(filename)
     return data[0], data[1]
+
 
 def main(datafile):
     X, y = loading_dataset(datafile)
@@ -39,11 +36,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', type=str, help="One input file")
     args = parser.parse_args()
-    
-    # Get X, y   
+
+    # Get X, y
     X, y = main(args.input_file)
 
-    # Subsample  
+    # Subsample
     N = 1000
     np.random.seed(42)
     i = np.random.choice(np.arange(X.shape[0]), N, replace=False)
@@ -52,27 +49,53 @@ if __name__ == '__main__':
 
     roc_score = []
     nnz_frac = []
-    # FTRL Prox 
+    # FTRL Prox
     lbda1s = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
 
     for lbda1 in lbda1s:
         start_time = datetime.now()
-        print (" ##### lbda1 = %f" %lbda1)
+        print(" ##### lbda1 = %f" % lbda1)
         FTRL = FollowTheRegularizedLeaderProximal(lbda1=lbda1)
-        w, y_proba = FTRL.train(X_sub,y_sub)
+        w, y_proba = FTRL.train(X_sub, y_sub)
         roc = roc_auc_score(y_sub, y_proba)
         nnz = nnz_fraction(w)
         print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
-           % (roc, nnz, (datetime.now() - start_time).seconds))
+              % (roc, nnz, (datetime.now() - start_time).seconds))
         roc_score.append(roc)
         nnz_frac.append(nnz)
-    
-    plot_df = pd.DataFrame({'ROC': roc_score, 'NNZ':nnz_frac})
-    plot_df.to_csv('results/FTRLP-result-news20.csv', index=None)
 
-    plt.plot(roc_score,nnz_frac)
+    plot_df_ftrl = pd.DataFrame({'ROC': roc_score, 'NNZ': nnz_frac})
+    plot_df_ftrl.to_csv('results/FTRLP-result-news20.csv', index=None)
+
+    plt.figure()
+    plt.plot(roc_score, nnz_frac)
     plt.gca().invert_yaxis()
     plt.savefig('plots/FTRLP-plot-news20.png')
+
+    # RDA
+    print("")
+    print("")
+    print("RDA")
+    roc_score = []
+    nnz_frac = []
+
+    for lbda1 in lbda1s:
+        start_time = datetime.now()
+        print(" ##### lbda1 = %f" % lbda1)
+        rda = RDASolver(lbda=lbda1, gamma=1.0)
+        w, y_proba = rda.train(X_sub, y_sub)
+        roc = roc_auc_score(y_sub, y_proba)
+        nnz = w.nnz / w.shape[1]
+        print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
+              % (roc, nnz, (datetime.now() - start_time).seconds))
+        roc_score.append(roc)
+        nnz_frac.append(nnz)
+
+    plot_df_rda = pd.DataFrame({'ROC': roc_score, 'NNZ': nnz_frac})
+    plot_df_rda.to_csv('results/RDA-result-news20.csv', index=None)
+
+    plt.figure()
+    plt.plot(roc_score, nnz_frac)
+    plt.gca().invert_yaxis()
+    plt.savefig('plots/RDA-plot-news20.png')
     plt.show()
-
-
