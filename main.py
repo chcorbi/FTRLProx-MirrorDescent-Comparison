@@ -1,11 +1,13 @@
 import argparse
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 from scipy import stats
 from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import log_loss
 from sklearn.metrics import roc_auc_score
+from sklearn.utils import shuffle
 
 from utils import nnz_fraction
 from base import OnlineClassifier
@@ -51,13 +53,12 @@ if __name__ == '__main__':
     roc_score = []
     nnz_frac = []
     # FTRL Prox 
-    lbda1s = [1e-1, 2e-1, 4e-1, 5e-1, 7e-1, 8e-1]
-    alpha = 100
-    lbda2 = 0.1
+    lbda1s = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
+
     for lbda1 in lbda1s:
         start_time = datetime.now()
         print (" ##### lbda1 = %f" %lbda1)
-        FTRL = FollowTheRegularizedLeaderProximal(alpha=alpha, lbda2=lbda2, lbda1=lbda1)
+        FTRL = FollowTheRegularizedLeaderProximal(lbda1=lbda1)
         w, y_proba = FTRL.train(X_sub,y_sub)
         roc = roc_auc_score(y_sub, y_proba)
         nnz = nnz_fraction(w)
@@ -66,10 +67,12 @@ if __name__ == '__main__':
         roc_score.append(roc)
         nnz_frac.append(nnz)
     
-    print (roc_score)
-    print (nnz_frac)
+    plot_df = pd.DataFrame({'ROC': roc_score, 'NNZ':nnz_frac})
+    plot_df.to_csv('results/FTRLP-result-news20.csv', index=None)
+
     plt.plot(roc_score,nnz_frac)
     plt.gca().invert_yaxis()
+    plt.savefig('plots/FTRLP-plot-news20.png')
     plt.show()
 
 

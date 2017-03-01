@@ -10,7 +10,7 @@ class FollowTheRegularizedLeaderProximal (BaseEstimator):
     minimizes iteratively with an adaptive combination of L2 and L1 norms.
     '''
     
-    def __init__(self, alpha=1., beta=1., lbda1=1., lbda2=1., verbose=1):
+    def __init__(self, alpha=100., beta=1., lbda1=1., lbda2=0.1, verbose=1):
         # Learning rate's proportionality constant.
         self.alpha = alpha
         # Learning rate parameter.
@@ -87,7 +87,7 @@ class FollowTheRegularizedLeaderProximal (BaseEstimator):
             self.loss.append(self.log_likelihood)
 
             # Print all the current information
-            if (self.verbose==1 and t%(X.shape[0]/10)==0):
+            if (self.verbose==1 and t%(int(X.shape[0]/10))==0):
                 print('Training Samples: {0:9} | ' 'Loss: {1:11.2f}'
                   .format(t, self.log_likelihood, (datetime.now() - start_time).seconds))
 
