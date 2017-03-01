@@ -87,7 +87,7 @@ class FollowTheRegularizedLeaderProximal (BaseEstimator):
             self.loss.append(self.log_likelihood)
 
             # Print all the current information
-            if (self.verbose==1 and t%500==0):
+            if (self.verbose==1 and t%(X.shape[0]/10)==0):
                 print('Training Samples: {0:9} | ' 'Loss: {1:11.2f}'
                   .format(t, self.log_likelihood, (datetime.now() - start_time).seconds))
 
