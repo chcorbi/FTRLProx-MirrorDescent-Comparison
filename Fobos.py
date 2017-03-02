@@ -17,6 +17,7 @@ class FOBOS (BaseEstimator):
     
     Arguments
     *********
+    scalable: if True, then it will try to do a smart update for the coefficients
     dimension: dimension of the observed variables + 1 (for bias)
     loss: either 'least_squares' (for regression) or 'logloss' (for classification)
     initial_step: the initial learning rate used for the descent. This parameter
@@ -57,7 +58,7 @@ class FOBOS (BaseEstimator):
         fitted is 0 instead of -1. A reverse mapping also has been done for prediction.
         
     '''
-    def __init__(self, loss='least_squares', initial_step=.1, lamda1= 1e-3,
+    def __init__(self, scalable=False, loss='least_squares', initial_step=.1, lamda1= 1e-3,
                   lamda2=1e-3, regularization='l1', initialization='zeros', with_log=False):
 
         self.yflag = False
@@ -80,6 +81,9 @@ class FOBOS (BaseEstimator):
             self.grad = self.gradient_logreg
         
         self.with_log = with_log
+        self.scalable = scalable
+        self.J = set()
+
         if with_log:
             self.gradlog = []
             self.wlog = []
@@ -97,30 +101,69 @@ class FOBOS (BaseEstimator):
 
     def fit(self, x_t, y_t):
         if self.p == -1:
-            if np.ndim(x_t) == 1:
-                self.p = np.shape(x_t)[0] + 1
+            if self.scalable:
+                b = 0
             else:
-                self.p = np.shape(x_t)[1] + 1
-            self.initialize()
-        
-        x_t = self.reshape_x(x_t)
-        self.t += 1
-        self.learning_rate = self.initial_step / np.sqrt(self.t)
-        w_thalf = self.w - self.learning_rate * self.grad(x_t, y_t)
+                b = 1 #We add one coefficient for bias
 
-        if self.regularization == 'l1':
-            self.w = self.soft_thresholding(w_thalf, self.lamda1*self.learning_rate)
-        elif self.regularization == 'l2':
-            self.w = w_thalf/(1 + self.lamda2*self.learning_rate)
-        elif self.regularization == 'elasticNet':
-            self.w = self.soft_thresholding(w_thalf, self.lamda1*self.learning_rate) / (1 + self.lamda2*self.learning_rate)
+            if np.ndim(x_t) == 1:
+                self.p = np.shape(x_t)[0] + b
+            else:
+                self.p = np.shape(x_t)[1] + b
+            self.initialize()
+
         if self.with_log:
-            self.wlog.append(self.w)
+            if not self.scalable:
+                self.wlog.append(self.w)
             if self.loss == 'logloss':
                 self.probas.append(self.predict_proba(x_t))
+        
+        if not self.scalable:
+            x_t = self.reshape_x(x_t)
+
+        self.t += 1
+        self.learning_rate = self.initial_step / np.sqrt(self.t)
+
+        if self.scalable:
+            lbda_eta = self.lamda1 * self.learning_rate
+
+            I = set(x_t.nonzero()[0])
+            dp = x_t.dot(self.w)
+
+            Jprime = set()
+
+            for j in self.J - I:
+                diff = np.abs(self.w[j]) - lbda_eta
+                if diff > 0:
+                    self.w[j] = np.sign(self.w[j]) * diff
+                    Jprime.add(j)
+            
+            for i in I:
+                aux = self.w[i] + self.learning_rate * y_t * x_t[i] / (1 + np.exp(y_t * dp))
+                diff = np.abs(aux) - lbda_eta
+                if diff > 0 :
+                    self.w[i] = np.sign(aux) * diff
+                    Jprime.add(i)
+                else:
+                    self.w[i] = 0
+                    if i in Jprime:
+                        Jprime.remove(i)
+            
+            self.J = Jprime
+        else:
+            w_thalf = self.w - self.learning_rate * self.grad(x_t, y_t)
+
+            if self.regularization == 'l1':
+                self.w = self.soft_thresholding(w_thalf, self.lamda1*self.learning_rate)
+            elif self.regularization == 'l2':
+                self.w = w_thalf/(1 + self.lamda2*self.learning_rate)
+            elif self.regularization == 'elasticNet':
+                self.w = self.soft_thresholding(w_thalf, self.lamda1*self.learning_rate) / (1 + self.lamda2*self.learning_rate)
+        
     
     def predict(self, x_t):
-        x_t = self.reshape_x(x_t)
+        if not self.scalable:
+            x_t = self.reshape_x(x_t)
         return pred(x_t)
 
 
