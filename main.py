@@ -89,10 +89,16 @@ if __name__ == '__main__':
         nnz_rda.append(nnz)
 
         # FOBOS
-        FOBOS = FOBOS(lbda1=lbda1, gamma=2.0)
-        w, y_proba = FOBOS.train(X_sub, y_sub)
+        FOBOS = FOBOS(scalable=True, initialization='zeros', loss='logloss',
+              lamda1= lbda1, regularization='l1', initial_step=.15, with_log=True)
+        for i in range(np.shape(X_sub)[0]):
+            x_t = X_sub[i].toarray()[0,:]
+            y_t = y_sub[i]
+            FOBOS.fit(x_t, y_t)
+        y_proba = FOBOS.probas
+        w = FOBOS.w
         roc = roc_auc_score(y_sub, y_proba)
-        nnz = nnz_fraction(w)
+        nnz = np.shape(w.nonzero()[0])[0]/float(np.shape(w)[0])
         print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
               % (roc, nnz, (datetime.now() - start_time).seconds))
         roc_fobos.append(roc)
