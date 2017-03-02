@@ -89,7 +89,7 @@ if __name__ == '__main__':
         nnz_rda.append(nnz)
 
         # FOBOS
-        FOBOS = RDASolver(lbda1=lbda1, gamma=2.0)
+        FOBOS = FOBOS(lbda1=lbda1, gamma=2.0)
         w, y_proba = FOBOS.train(X_sub, y_sub)
         roc = roc_auc_score(y_sub, y_proba)
         nnz = nnz_fraction(w)
