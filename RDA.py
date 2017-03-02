@@ -5,6 +5,14 @@ from sklearn.base import BaseEstimator
 from utils import *
 
 
+def sign(x):
+    if x > 0:
+        return 1
+    elif x < 0:
+        return -1
+    return 0
+
+
 class SqrtIterator():
     def __init__(self, gamma=1.0):
         self._t = 1
@@ -51,14 +59,15 @@ class RDASolver(BaseEstimator):
 
         # Update weight
         for i in nnz_X:
-            if self._gBar[0, i] <= self.lbda:
+            if np.abs(self._gBar[0, i]) <= self.lbda:
                 self.w[0, i] = 0
             else:
-                sign = 1. if self._gBar[0, i] >= 0 else -1.
-                self.w[0, i] = - beta_t / self.gamma * (self._gBar[0, i] - self.lbda * sign)
+                s = sign(self._gBar[0, i])
+                self.w[0, i] = - beta_t / (self.gamma * self.gamma) * (self._gBar[0, i] - self.lbda * s)
 
         # Compute probability and losses
         wtx = self.w.dot(X.T)[0, 0]
+        # print(wtx)
         p = sigmoid(wtx)
         self.log_likelihood += log_loss(y, p)
         self.losses.append(self.log_likelihood)
@@ -77,7 +86,7 @@ class RDASolver(BaseEstimator):
         y_proba = []
 
         for t in range(X.shape[0]):
-            g = X[t] / (1 + np.exp(-y[t] * self.w.dot(X[t].T)[0, 0]))
+            g = - y[t] * X[t] / (1 + np.exp(-y[t] * self.w.dot(X[t].T)[0, 0]))
             w, p = self.iterate(X[t], y[t], g)
             y_proba.append(p)
             if t % int(X.shape[0] / 10) == 0:

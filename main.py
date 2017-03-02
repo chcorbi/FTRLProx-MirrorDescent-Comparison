@@ -7,7 +7,7 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import roc_auc_score
 
 from utils import nnz_fraction
-from solvers import RDASolver
+from RDA import RDASolver
 from FTRLProx import FollowTheRegularizedLeaderProximal
 
 
@@ -39,6 +39,7 @@ if __name__ == '__main__':
 
     # Get X, y
     X, y = main(args.input_file)
+    filename = args.input_file.split('/')[-1]
 
     # Subsample
     N = 1000
@@ -65,12 +66,12 @@ if __name__ == '__main__':
         nnz_frac.append(nnz)
 
     plot_df_ftrl = pd.DataFrame({'ROC': roc_score, 'NNZ': nnz_frac})
-    plot_df_ftrl.to_csv('results/FTRLP-result-news20.csv', index=None)
+    plot_df_ftrl.to_csv('results/FTRLP-result-' + filename, index=None)
 
     plt.figure()
     plt.plot(roc_score, nnz_frac)
     plt.gca().invert_yaxis()
-    plt.savefig('plots/FTRLP-plot-news20.png')
+    plt.savefig('plots/FTRLP-plot-' + filename + '.png')
 
     # RDA
     print("")
@@ -78,11 +79,12 @@ if __name__ == '__main__':
     print("RDA")
     roc_score = []
     nnz_frac = []
+    lbda1s = np.linspace(1e-3, 10, 8)
 
     for lbda1 in lbda1s:
         start_time = datetime.now()
         print(" ##### lbda1 = %f" % lbda1)
-        rda = RDASolver(lbda=lbda1, gamma=1.0)
+        rda = RDASolver(lbda=lbda1, gamma=2.0)
         w, y_proba = rda.train(X_sub, y_sub)
         roc = roc_auc_score(y_sub, y_proba)
         nnz = w.nnz / w.shape[1]
@@ -92,10 +94,10 @@ if __name__ == '__main__':
         nnz_frac.append(nnz)
 
     plot_df_rda = pd.DataFrame({'ROC': roc_score, 'NNZ': nnz_frac})
-    plot_df_rda.to_csv('results/RDA-result-news20.csv', index=None)
+    plot_df_rda.to_csv('results/RDA-result-' + filename, index=None)
 
     plt.figure()
     plt.plot(roc_score, nnz_frac)
     plt.gca().invert_yaxis()
-    plt.savefig('plots/RDA-plot-news20.png')
+    plt.savefig('plots/RDA-plot-' + filename + '.png')
     plt.show()

@@ -11,7 +11,7 @@ from sklearn.utils import shuffle
 
 from utils import nnz_fraction
 from base import OnlineClassifier
-from solvers import *
+from RDA import *
 from FTRLProx import FollowTheRegularizedLeaderProximal
 from Fobos import FOBOS
 
@@ -26,7 +26,7 @@ def main(datafile):
 
     # Change -1 values to 0
     #y[y == -1] = 0
-    
+
     # Remove zeros entries
     nnz_entries = np.unique(X.nonzero()[0])
     X = X[nnz_entries]
@@ -52,7 +52,7 @@ def execThread(lbda1):
             fobos.fit(x_t, y_t)
         y_proba = fobos.probas
         w = fobos.w
-	
+
         roc = roc_auc_score(y_subb, y_proba)
         nnz = nnz_fraction(w)
         print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
@@ -64,11 +64,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file', type=str, help="One input file")
     args = parser.parse_args()
-    
-    # Get X, y   
+
+    # Get X, y
     X, y = main(args.input_file)
 
-    # Subsample  
+    # Subsample
     N = 1000
     np.random.seed(42)
     i = np.random.choice(np.arange(X.shape[0]), N, replace=False)
@@ -79,22 +79,22 @@ if __name__ == '__main__':
 
     roc_score = []
     nnz_frac = []
-    # FTRL Prox 
+    # FTRL Prox
     lbda1s = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
-    
+
     threads = []
     for lbda1 in lbda1s:
         th = Thread(target=execThread, args=[lbda1])
         threads.append(th)
         th.start()
-    
+
     print("[Waiting for threads to finish]")
-    
+
     for th in threads:
         th.join()
-    
 
-    
+
+
     plot_df = pd.DataFrame({'ROC': roc_score, 'NNZ':nnz_frac})
     plot_df.to_csv('results/FOBOS-result-news20.csv', index=None)
 
