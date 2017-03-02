@@ -26,10 +26,17 @@ def main(datafile):
     nnz_entries = np.unique(X.nonzero()[0])
     X = X[nnz_entries]
     y = y[nnz_entries]
-
-    # TODO: define an OnlineClassifier instance and train it over the dataset
-
     return X, y
+
+
+def plotandsave(algo, filename, roc, nnz):
+    plot_df = pd.DataFrame({'ROC': roc, 'NNZ': nnz})
+    plot_df.to_csv('results/' + algo + '-result-' + filename, index=None)
+    plt.figure()
+    plt.plot(roc, nnz)
+    plt.gca().invert_yaxis()
+    plt.savefig('plots/' + algo +'-plot-' + filename + '.png')
+
 
 
 if __name__ == '__main__':
@@ -48,56 +55,50 @@ if __name__ == '__main__':
     X_sub = X[i]
     y_sub = y[i]
 
-    roc_score = []
-    nnz_frac = []
-    # FTRL Prox
-    lbda1s = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1]
+    roc_ftrlp = []
+    nnz_ftrlp = []
+    roc_rda = []
+    nnz_rda = []
+    roc_fobos = []
+    nnz_fobos = []
+
+    lbda1s = [1e-5, 1e-2, 1e-1, 1]
 
     for lbda1 in lbda1s:
         start_time = datetime.now()
         print(" ##### lbda1 = %f" % lbda1)
+
+        # FTRL
         FTRL = FollowTheRegularizedLeaderProximal(lbda1=lbda1)
         w, y_proba = FTRL.train(X_sub, y_sub)
         roc = roc_auc_score(y_sub, y_proba)
         nnz = nnz_fraction(w)
         print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
               % (roc, nnz, (datetime.now() - start_time).seconds))
-        roc_score.append(roc)
-        nnz_frac.append(nnz)
+        roc_ftrlp.append(roc)
+        nnz_ftrlp.append(nnz)
 
-    plot_df_ftrl = pd.DataFrame({'ROC': roc_score, 'NNZ': nnz_frac})
-    plot_df_ftrl.to_csv('results/FTRLP-result-' + filename, index=None)
-
-    plt.figure()
-    plt.plot(roc_score, nnz_frac)
-    plt.gca().invert_yaxis()
-    plt.savefig('plots/FTRLP-plot-' + filename + '.png')
-
-    # RDA
-    print("")
-    print("")
-    print("RDA")
-    roc_score = []
-    nnz_frac = []
-    lbda1s = np.linspace(1e-3, 10, 8)
-
-    for lbda1 in lbda1s:
-        start_time = datetime.now()
-        print(" ##### lbda1 = %f" % lbda1)
-        rda = RDASolver(lbda=lbda1, gamma=2.0)
-        w, y_proba = rda.train(X_sub, y_sub)
+        # RDA
+        RDA = RDASolver(lbda1=lbda1, gamma=2.0)
+        w, y_proba = RDA.train(X_sub, y_sub)
         roc = roc_auc_score(y_sub, y_proba)
-        nnz = w.nnz / w.shape[1]
+        nnz = nnz_fraction(w)
         print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
               % (roc, nnz, (datetime.now() - start_time).seconds))
-        roc_score.append(roc)
-        nnz_frac.append(nnz)
+        roc_rda.append(roc)
+        nnz_rda.append(nnz)
 
-    plot_df_rda = pd.DataFrame({'ROC': roc_score, 'NNZ': nnz_frac})
-    plot_df_rda.to_csv('results/RDA-result-' + filename, index=None)
+        # FOBOS
+        FOBOS = RDASolver(lbda1=lbda1, gamma=2.0)
+        w, y_proba = FOBOS.train(X_sub, y_sub)
+        roc = roc_auc_score(y_sub, y_proba)
+        nnz = nnz_fraction(w)
+        print('ROC: %f | ' 'NNZ: %f | ' 'Time taken: %s seconds'
+              % (roc, nnz, (datetime.now() - start_time).seconds))
+        roc_fobos.append(roc)
+        nnz_fobos.append(nnz)
 
-    plt.figure()
-    plt.plot(roc_score, nnz_frac)
-    plt.gca().invert_yaxis()
-    plt.savefig('plots/RDA-plot-' + filename + '.png')
-    plt.show()
+    plotandsave('FTRLP', filename, roc_ftrlp, nnz_ftlrp)
+    plotandsave('RDA', filename, roc_rda, nnz_rda)
+    plotandsave('FOBOS', filename, roc_fobos, nnz_fobos)
+

@@ -10,7 +10,7 @@ class FollowTheRegularizedLeaderProximal (BaseEstimator):
     minimizes iteratively with an adaptive combination of L2 and L1 norms.
     '''
     
-    def __init__(self, alpha=100., beta=1., lbda1=1., lbda2=0.1, verbose=1):
+    def __init__(self, alpha=1., beta=1, lbda1=1., lbda2=0.01, verbose=1):
         # Learning rate's proportionality constant.
         self.alpha = alpha
         # Learning rate parameter.
